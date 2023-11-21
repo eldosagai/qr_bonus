@@ -3,18 +3,39 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
 from .utils import generate_otp, send_otp_phone
-from .models import User, Restaurant, Bonuses
+from .models import User, Restaurant, Bonuses, History
 from rest_framework import permissions
 from django.contrib.auth import authenticate
 from rest_framework.decorators import action
-from .serializers import UserSerializer, RestaurantSerializer, BonusesSerializer
+from .serializers import UserSerializer, RestaurantSerializer, BonusesSerializer, HistorySerializer
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+
+
+class HistoryViewSet(viewsets.ModelViewSet):
+    queryset = History.objects.all()
+    serializer_class = HistorySerializer
+    permission_classes = [permissions.AllowAny]
+
+    def perform_create(self, serializer):
+        print(serializer)
+        return super().perform_create(serializer)
 
 
 class BonusesViewsSet(viewsets.ModelViewSet):
     queryset = Bonuses.objects.all()
     serializer_class = BonusesSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.AllowAny]    
+    
+    def partial_update(self, request, *args, **kwargs):
+        amount = request.data['amount']
+        print(request.data)
+        user_id = request.data['user_id']
+        restaurant_id = request.data['restaurant_id']
+        user = User.objects.get(id=user_id)
+        restaurant = Restaurant.objects.get(id=restaurant_id)
+        History.objects.create(amount=amount, user=user, restaurant=restaurant)
+        # print(request.data['user_id'])        
+        return super().partial_update(request, *args, **kwargs)
 
 
 class RestaurantViewSet(viewsets.ModelViewSet):
@@ -89,7 +110,6 @@ class UserViewSet(viewsets.ModelViewSet):
     def login_with_otp(self, request):
         username = request.data.get('username', '')
         otp = request.data.get('otp', '')
-        password = request.data.get('password', '')
         
         try:
             user = User.objects.get(username=username)
